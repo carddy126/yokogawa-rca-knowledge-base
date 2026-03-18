@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>横河仪表故障根因分析知识库 | Yokogawa RCA Database</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .yokogawa-accent {
+            background: linear-gradient(135deg, #00a0e9 0%, #0066cc 100%);
+        }
+        
+        .fault-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        
+        .fault-card:hover {
+            transform: translateY(-2px);
+            border-color: #00a0e9;
+            box-shadow: 0 10px 30px rgba(0, 160, 233, 0.2);
+        }
+        
+        .fault-card.active {
+            border-color: #00a0e9;
+            background: rgba(0, 160, 233, 0.1);
+        }
+        
+        .severity-critical { border-left: 4px solid #ef4444; }
+        .severity-high { border-left: 4px solid #f59e0b; }
+        .severity-medium { border-left: 4px solid #eab308; }
+        .severity-low { border-left: 4px solid #22c55e; }
+        
+        .root-cause-tag {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+        
+        .action-tag {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #6ee7b7;
+        }
+        
+        .prevention-tag {
+            background: linear-gradient(135deg, rgba(0, 160, 233, 0.2) 0%, rgba(0, 102, 204, 0.2) 100%);
+            border: 1px solid rgba(0, 160, 233, 0.3);
+            color: #7dd3fc;
+        }
+        
+        .step-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00a0e9 0%, #0066cc 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .check-item {
+            transition: all 0.2s;
+        }
+        
+        .check-item:hover {
+            background: rgba(0, 160, 233, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .probability-bar {
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(71, 85, 105, 0.5);
+            overflow: hidden;
+        }
+        
+        .probability-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        
+        .tool-tip {
+            position: relative;
+            cursor: help;
+        }
+        
+        .tool-tip:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            color: #e2e8f0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 50;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+        }
+        
+        .yokogawa-logo {
+            background: linear-gradient(135deg, #00a0e9 0%, #0066cc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        @media print {
+            .no-print { display: none; }
+            .glass-panel { background: white !important; color: black !important; }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Header -->
+    <header class="max-w-7xl mx-auto mb-8 no-print">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+            <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#00a0e9] to-[#0066cc] flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <span class="text-white font-bold text-2xl">Y</span>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold yokogawa-logo">
+                        横河仪表故障根因分析知识库
+                    </h1>
+                    <p class="text-slate-400 text-sm">Yokogawa Instrument Root Cause Analysis Database</p>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3">
+                <select id="category-filter" onchange="filterFaults()" class="bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-[#00a0e9]">
+                    <option value="all">全部仪表类型</option>
+                   
